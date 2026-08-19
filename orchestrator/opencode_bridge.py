@@ -10,6 +10,27 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORTS = ROOT / "reports"
 
 
+REQUIRED_SECTIONS = [
+    "# Analysis",
+    "# Current Architecture",
+    "# Proposed Architecture",
+    "# Technology Decisions",
+    "# Repository Structure",
+    "# Data Architecture",
+    "# Realtime Architecture",
+    "# Media Architecture",
+    "# Security Architecture",
+    "# Testing Architecture",
+    "# Development Environment",
+    "# Deployment Strategy",
+    "# Risks And Tradeoffs",
+    "# Implementation Sequence",
+    "# Verification Criteria",
+    "# Human Decisions",
+    "# Final Recommendation",
+]
+
+
 def read_file(path: Path) -> str:
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
@@ -17,7 +38,7 @@ def read_file(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def run_opencode(message: str, context_file: Path) -> str:
+def run_opencode(message: str, context_file: Path) -> tuple[int, str]:
     command = [
         "opencode",
         "run",
@@ -42,13 +63,17 @@ def run_opencode(message: str, context_file: Path) -> str:
     if result.stderr.strip():
         output += "\n\n[stderr]\n" + result.stderr.strip()
 
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"OpenCode exited with code {result.returncode}\n\n"
-            f"{output}"
-        )
+    return result.returncode, output
 
-    return output
+
+def validate_plan(output: str) -> list[str]:
+    missing = []
+
+    for section in REQUIRED_SECTIONS:
+        if section not in output:
+            missing.append(section)
+
+    return missing
 
 
 def main() -> int:
@@ -85,122 +110,96 @@ def main() -> int:
         prompt = f"""
 You are the ANALYST / ARCHITECT stage of the Couple OS AI development team.
 
-You are working inside the Couple OS repository.
-
-THIS IS A PLANNING-ONLY STAGE.
-
-You have permission to inspect the repository.
-
-You DO NOT have permission to modify application source code.
-
-You DO NOT have permission to modify product requirements.
-
-You DO NOT have permission to install dependencies.
-
-You DO NOT have permission to perform destructive operations.
-
-Your task is to analyze the current repository and produce an implementation-ready technical plan.
+TASK:
+{task}
 
 The complete project execution context is attached to this message.
 
-CURRENT TASK:
+MODE: PLANNING ONLY
 
-{task}
+You may inspect the repository.
 
-REQUIRED PROCESS:
+You must NOT:
+- modify application source code
+- create application files
+- modify product requirements
+- install dependencies
+- modify configuration
+- create database migrations
+- commit
+- push
+- deploy
+- perform destructive operations
 
-1. Inspect the repository yourself.
-2. Inspect the existing implementation relevant to this task.
-3. Identify the current architecture.
-4. Identify the smallest correct implementation.
-5. Identify the exact files that are likely to change.
-6. Identify API, backend, frontend, database, and realtime implications where applicable.
-7. Identify edge cases.
-8. Identify security and data-integrity concerns.
-9. Identify the required automated tests.
-10. Identify required manual verification.
-11. Identify any Product Owner decisions that are still unclear.
-12. Produce a structured implementation plan.
+IMPORTANT OUTPUT RULE:
 
-IMPORTANT:
+Your final response MUST be a plain-text Markdown architecture document.
 
-Do not implement the feature.
+Do NOT use repository write tools to create the report.
 
-Do not modify application source files.
+Do NOT create a report file yourself.
 
-Do not create migrations.
+Do NOT return JSON.
 
-Do not install packages.
+Do NOT return tool-call output as the final answer.
 
-Do not change configuration.
+After inspecting the repository, return ONLY the final architecture document.
 
-Do not commit or push anything.
-
-If the repository already contains partial implementation, analyze it accurately rather than assuming the feature is missing.
-
-REQUIRED OUTPUT FORMAT:
+The final document MUST contain ALL of these headings exactly:
 
 # Analysis
 
-Describe the relevant existing implementation.
-
 # Current Architecture
 
-Describe how the current system handles the relevant behavior.
+# Proposed Architecture
 
-# Proposed Solution
+# Technology Decisions
 
-Describe the smallest appropriate solution.
+# Repository Structure
 
-# Files To Change
+# Data Architecture
 
-List files likely to be modified or created and explain why.
+# Realtime Architecture
 
-# Data Flow
+# Media Architecture
 
-Describe important state and data flow.
+# Security Architecture
 
-# API / Realtime
+# Testing Architecture
 
-Describe relevant API or realtime changes.
+# Development Environment
 
-# UI
+# Deployment Strategy
 
-Describe required user-facing behavior.
-
-# Testing Plan
-
-Describe automated and manual tests.
-
-# Risks And Edge Cases
-
-List important risks and edge cases.
-
-# Scope Check
-
-Explicitly list functionality that should NOT be implemented as part of this task.
-
-# Human Decisions
-
-List anything that requires Product Owner clarification.
-
-If there are no required decisions, write:
-
-No blocking Product Owner decisions identified.
+# Risks And Tradeoffs
 
 # Implementation Sequence
 
-Give an ordered implementation sequence.
-
 # Verification Criteria
 
-Define the evidence required before the implementation can be considered verified.
+# Human Decisions
 
 # Final Recommendation
 
-State whether the task is ready for implementation.
+Under each heading provide useful technical content.
 
-Do not claim implementation has been completed.
+IMPORTANT:
+
+There is currently no application source code.
+
+Do not pretend an application exists.
+
+If a requested capability cannot yet be implemented because the foundation does not exist, explicitly say so.
+
+The architecture must prioritize the real Couple OS product and its Movie Date experience.
+
+Do not over-engineer.
+
+Do not select technologies merely because they are common in AI-generated applications.
+
+Consider cost, maintainability, realtime requirements, media handling, security, mobile experience, testing, and the current development environment.
+
+The final recommendation must clearly state whether the architecture is ready for implementation.
 """.strip()
 
         prompt_file = (
@@ -218,7 +217,7 @@ Do not claim implementation has been completed.
         print(f"Task: {task_id}")
         print()
 
-        output = run_opencode(
+        return_code, output = run_opencode(
             prompt,
             context_file,
         )
@@ -226,6 +225,24 @@ Do not claim implementation has been completed.
         report_file = (
             REPORTS / f"{task_id}-opencode-plan.md"
         )
+
+        missing_sections = validate_plan(output)
+
+        if return_code != 0:
+            status = "FAILED"
+            reason = (
+                f"OpenCode exited with code {return_code}."
+            )
+        elif missing_sections:
+            status = "FAILED"
+            reason = (
+                "Required architecture sections are missing."
+            )
+        else:
+            status = "PASSED"
+            reason = (
+                "Required architecture sections were found."
+            )
 
         report = f"""# {task_id} — OpenCode Planning Report
 
@@ -238,17 +255,34 @@ ANALYSIS / ARCHITECTURE
 Mode:
 PLANNING ONLY
 
-## OpenCode Output
+Status:
+{status}
+
+Validation:
+{reason}
+
+"""
+
+        if missing_sections:
+            report += "Missing sections:\n\n"
+
+            for section in missing_sections:
+                report += f"- {section}\n"
+
+            report += "\n"
+
+        report += f"""## OpenCode Final Output
 
 {output}
 
-## Orchestrator Result
+## Orchestrator Decision
 
-The OpenCode planning stage completed.
+Planning status: {status}
 
-No implementation authority was granted by this bridge.
+Implementation authority:
+DENIED
 
-The implementation plan must be reviewed before the next stage.
+Application source code was not authorized for modification by this stage.
 """
 
         report_file.write_text(
@@ -256,18 +290,24 @@ The implementation plan must be reviewed before the next stage.
             encoding="utf-8",
         )
 
-        print("OPEN_CODE PLANNING COMPLETE")
         print()
+        print(f"PLANNING STATUS: {status}")
         print(
             f"Report: "
             f"{report_file.relative_to(ROOT)}"
         )
-        print()
-        print(
-            "Implementation was not requested."
-        )
 
-        return 0
+        if missing_sections:
+            print()
+            print("Missing required sections:")
+
+            for section in missing_sections:
+                print(f"- {section}")
+
+        print()
+        print("Implementation authority: DENIED")
+
+        return 0 if status == "PASSED" else 2
 
     except Exception as error:
         print(f"OPENCODE BRIDGE ERROR: {error}")
