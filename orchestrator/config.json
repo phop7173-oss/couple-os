@@ -1,0 +1,11 @@
+{
+  "project": "couple-os",
+  "max_iterations": 3,
+  "require_human_acceptance": true,
+  "allow_autonomous_implementation": true,
+  "allow_autonomous_testing": true,
+  "allow_autonomous_fixing": true,
+  "allow_autonomous_deployment": false,
+  "allow_product_scope_changes": false,
+  "allow_destructive_operations": false
+}
