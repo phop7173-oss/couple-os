@@ -1,0 +1,37 @@
+{
+  "planning": {
+    "allow_repository_read": true,
+    "allow_source_write": false,
+    "allow_dependency_install": false,
+    "allow_database_migration": false,
+    "allow_git_commit": false,
+    "allow_git_push": false,
+    "allow_deployment": false,
+    "allow_destructive_operations": false,
+    "allow_product_scope_change": false
+  },
+
+  "implementation": {
+    "allow_repository_read": true,
+    "allow_source_write": true,
+    "allow_dependency_install": true,
+    "allow_database_migration": true,
+    "allow_git_commit": false,
+    "allow_git_push": false,
+    "allow_deployment": false,
+    "allow_destructive_operations": false,
+    "allow_product_scope_change": false
+  },
+
+  "verification": {
+    "allow_repository_read": true,
+    "allow_source_write": false,
+    "allow_dependency_install": false,
+    "allow_database_migration": false,
+    "allow_git_commit": false,
+    "allow_git_push": false,
+    "allow_deployment": false,
+    "allow_destructive_operations": false,
+    "allow_product_scope_change": false
+  }
+}
